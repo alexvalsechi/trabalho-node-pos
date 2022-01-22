@@ -23,7 +23,8 @@ router.post("/user", async (req, resp) => {
   bodyReq = new Date().getTime();
   await fs.writeFile(
     "files/log.txt",
-    JSON.stringify([bodyReq], null, 4)
+    ${moment().format('YYYY-MM-DD hh:mm:ss')} - ${req.method} - ${req.protocol + '://' + req.headers.host + req.originalUrl}\n,
+    {flag: 'a'}
   );
   resp.writeHead(201, { "content-type": "text/html" });
   resp.write(body);
@@ -31,16 +32,24 @@ router.post("/user", async (req, resp) => {
 });
 
 router.put('/user', (req, res) => {
-  const { body } = req;
-  const { name, email, password } = req.body;
-  req[index] = name; 
-  return res.json(req);
+  const { body } = req
+  const { name, email, password } = body
+  const databaseConnection = new DatabaseConnection()
+  const db = await databaseConnection.connect()
+  const { rows } = await db.query(
+     "update users set name = $1, email = $2, password = $3, created_at = $4, updated_at = $5 where id = $6 RETURNING *",
+      [name, email, password, moment().format('YYYY-MM-DD hh:mm:ss'), moment().format('YYYY-MM-DD hh:mm:ss'), req.params.id]
+  )
+  resp.status(201).send(rows)
 });
 
 router.delete('/user/', (req, res) => {
-  const { index } = req.params; 
-  req.splice(index, 1); 
-  return res.send();
+    const databaseConnection = new DatabaseConnection()
+    const db = await databaseConnection.connect()
+    const { rows } = await db.query(
+       "delete from users where id = $1 RETURNING *",
+        [req.params.id])
+    resp.status(200).send(rows)
 }); 
 
 module.exports = router;
